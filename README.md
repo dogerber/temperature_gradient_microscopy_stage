@@ -15,6 +15,7 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 * Variable spacing between metal blocks of 0-1 cm
 * Translation of sample in the temperature gradient with 1.9 cm travel range and 150 nm stepsize
 * Optional datalogging to microSD-card
+* Optimized for microscope stages with 160x110 mm opening "Universal insert" I-3091, but can be adapted
 
 
 # Setup overview
