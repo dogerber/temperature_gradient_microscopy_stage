@@ -16,7 +16,7 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 The setup consists of a PID control loop, where an Arduini microcontroller regulated the voltage for two peltier devices. Thermistors are placed in two copper blocks of variable spacing above the peltier devices and the opposite side of the peltier devices is held at room temperature by water cooling. The sample is placed on the copper block and can be moved relative to the temperature gradient by a linear actuator.
 
 
-<img src="images/picture_controller.png" height =400px > <img src="images/Exploded_view_animation.gif" height =400px >
+<img src="images/picture_controller.png" height =300px > <img src="images/Exploded_view_animation.gif" height =300px >
 
 
 # Features
