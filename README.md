@@ -1,9 +1,17 @@
-# temperature_gradient_microscopy_stage
+# Temperature Gradient Microscopy Stage
+
+<a href="https://softliv.mat.ethz.ch/"><img src="https://softliv.mat.ethz.ch/_jcr_content/orgbox/image.imageformat.logo.1477473979.png" align = right height = 100px></a>
 Microscopy stage with two temperature controlled metal block and a translational frame to move a sample in the temperature gradient by [Dominic Gerber](https://softliv.mat.ethz.ch/people/person-detail.MTk2MDQ5.TGlzdC8yMTgxLDIwMDIyNzA3NTg=.html) from the [Soft and Living Materials Group at ETH Zürich](https://softliv.mat.ethz.ch/).
 
 Detailed instructions to build the setup can be found in the [wiki](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/).
 
-[User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
+  > [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
+
+
+  > [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)   
+
+
+  > [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
 
 
 
