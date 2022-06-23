@@ -11,6 +11,7 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 
 * 0.05 K temperature accuracy, when calibrated
 * 0.01 K temperature stability
+* Temperature range -20 to 60 °C (when cooled with room temperature coolant)
 * Max. cooling speed of 60 K/min 
 * Variable spacing between metal blocks of 0-1 cm
 * Translation of sample in the temperature gradient with 1.9 cm travel range and 150 nm stepsize
