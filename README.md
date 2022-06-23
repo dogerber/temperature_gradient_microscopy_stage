@@ -1,7 +1,7 @@
 # temperature_gradient_microscopy_stage
-Microscopy stage with two temperature controlled metal block and a translational frame to move a sample in the temperature gradient.
+Microscopy stage with two temperature controlled metal block and a translational frame to move a sample in the temperature gradient by [Dominic Gerber](https://softliv.mat.ethz.ch/people/person-detail.MTk2MDQ5.TGlzdC8yMTgxLDIwMDIyNzA3NTg=.html) from the [Soft and Living Materials Group at ETH Zürich](https://softliv.mat.ethz.ch/).
 
-Detailed instructions to build the setup can be found in the [wiki](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Building-your-own-Setup).
+Detailed instructions to build the setup can be found in the [wiki](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/).
 
 [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
 
@@ -11,11 +11,11 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 # Setup overview
 The setup consists of a PID control loop, where an Arduini microcontroller regulated the voltage for two peltier devices. Thermistors are placed in two copper blocks of variable spacing above the peltier devices and the opposite side of the peltier devices is held at room temperature by water cooling. The sample is placed on the copper block and can be moved relative to the temperature gradient by a linear actuator.
 
+
 <img src="images/picture_controller.png" height =400px > <img src="images/Exploded_view_animation.gif" height =400px >
 
 
 # Features
-
 * 0.05 K temperature accuracy, when calibrated
 * 0.01 K temperature stability
 * Temperature range -20 to 60 °C (when cooled with room temperature coolant)
