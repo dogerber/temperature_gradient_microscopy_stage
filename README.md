@@ -18,3 +18,6 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 
 
 # Setup overview
+
+
+<img src="images/Exploded_view_animation.gif" width =50%>
