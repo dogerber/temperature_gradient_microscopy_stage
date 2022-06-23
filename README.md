@@ -9,9 +9,9 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 
 # Features
 
-* 0.05 °C temperature accuracy, when calibrated
+* 0.05 K temperature accuracy, when calibrated
 * 0.01 K temperature stability
-* Max. cooling speed of XXX 
+* Max. cooling speed of 60 K/min 
 * Variable spacing between metal blocks of 0-1 cm
 * Translation of sample in the temperature gradient with 1.9 cm travel range and 150 nm stepsize
 * Optional datalogging to microSD-card
