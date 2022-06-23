@@ -7,11 +7,7 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 
   > [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
 
-
-  > [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)   
-
-
-  > [User manual](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
+  > [Building your own setup]((https://github.com/dogerber/temperature_gradient_microscopy_stage/wiki/Building-your-own-Setup))   
 
 
 
