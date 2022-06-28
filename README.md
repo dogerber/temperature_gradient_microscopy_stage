@@ -28,5 +28,5 @@ The setup consists of a PID control loop, where an Arduini microcontroller regul
 * Optimized for microscope stages with 160x110 mm opening "Universal insert" I-3091, but can be adapted
 
 # Acknowledgement
-Lawrence Wilen and Robert Style helped with the design of this stage and controller. The menu system used is [GEM](https://github.com/Spirik/GEM) by [Spirik](https://github.com/Spirik)
+Lawrence Wilen and Robert Style helped with the design of this stage and controller. The menu system used is [GEM](https://github.com/Spirik/GEM) by [Spirik](https://github.com/Spirik).
 
