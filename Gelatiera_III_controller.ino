@@ -104,7 +104,7 @@ const byte okPin = 30;
 
 
 //////////////////////////////// Global Variables //////////////////////////////////////
-#define CODE_VERSION "1.0.0"
+#define CODE_VERSION "1.0.1"
 
 // Settings
 #define T_MAX 45 // in Celsius, maximum allowed temperature, should be at least 5 degrees out of operation range
@@ -528,6 +528,12 @@ void loop() {
     myFile.close();
   } // if enableDataLogging
 
+
+  // Debugging
+  if (do_Serial_communication){
+    Serial.print("mot_t_startMovement: "); Serial.println(mot_t_startMovement);
+  }
+
   time_for_one_loop_ms =  millis() - runtime * 1000;
   runtime = millis() / 1000;
 
@@ -572,6 +578,7 @@ void setupMenu() {
   menuPageInfo.addMenuItem(menuRuntime);
   menuPageInfo.addMenuItem(menuItemOffset1);
   menuPageInfo.addMenuItem(menuItemOffset2);
+  
 
   // Subpage QUICK
   menuPageQuick.addMenuItem(menuItemMainLink3);
@@ -581,6 +588,7 @@ void setupMenu() {
   menuPageQuick.addMenuItem(menuItemQuickMaxMotSpeed);
   menuPageQuick.addMenuItem(menuItemQuickMoveTo0);
   menuPageQuick.addMenuItem(menuItemQuickMoveStep);
+    menuItemQuickMoveStep.setPrecision(2);
   menuPageQuick.addMenuItem(menuItemQuickMovePos);
   menuPageQuick.addMenuItem(menuItemQuickMoveNeg);
   
@@ -900,6 +908,7 @@ void resetMotPosition() {
 }
 
 void doCommitMovement() {
+// when "Move: " is set 
   if (mot_first_movement) { // remind user to reset the motor!
     warningMessage("Dont forget to recalibrate the motor!");
     mot_first_movement = false;
@@ -910,6 +919,7 @@ void doCommitMovement() {
     mot_Position_startMovement = mot_position;
     stepper.enable();
   }
+  
 }
 
 void moveMotor() {
@@ -920,12 +930,12 @@ void moveMotor() {
       mot_SetPosition = mot_PlanPosition;
     }
     else {
-      mot_SetPosition = mot_Position_startMovement + mot_speed * speedConversionFactor * (millis() - mot_t_startMovement); // speed * conversion * dt = steps to do
+      mot_SetPosition = mot_Position_startMovement + mot_speed * speedConversionFactor * (millis() - mot_t_startMovement)* signOfX(mot_PlanPosition - mot_position); // speed * conversion * dt * direction = place to be now
     }
-
 
  // move motor if necessary and allowed
     if (abs(mot_SetPosition - mot_position) >= 1) { // 0 means no changes, can skip all these checks then
+      
       // check if setPos is still allowed
       if (abs(mot_SetPosition) > mot_maxPos) {
         mot_SetPosition = mot_position;
@@ -1151,21 +1161,18 @@ void doQuickMotSpeed() {
 void doQuickMoveMiddle() {
   mot_PlanPosition = 0;
   doCheckPlanPosition();
-  commitMovement = true;
   doCommitMovement();
 }
 
 void doQuickMovePos() {
   mot_PlanPosition_um = mot_PlanPosition_um + mot_QuickMoveStep_um;
   doCheckPlanPosition();
-  commitMovement = true;
   doCommitMovement();
 }
 
 void doQuickMoveNeg() {
    mot_PlanPosition_um = mot_PlanPosition_um - mot_QuickMoveStep_um;
   doCheckPlanPosition();
-  commitMovement = true;
   doCommitMovement();
 }
 
