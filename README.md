@@ -24,12 +24,13 @@ The setup consists of a PID control loop, where an Arduini microcontroller regul
 # Features
 * 0.05 K temperature accuracy, when calibrated
 * 0.01 K temperature stability
-* Temperature range -20 to 60 °C (when cooled with room temperature coolant)
-* Max. cooling speed of 50 K/min 
+* Temperature range -25 to 60 °C (when cooled with room temperature coolant)
+* Max. cooling speed of about 50 K/min 
 * Variable spacing between metal blocks of 0-1 cm
 * Translation of sample in the temperature gradient with 1.9 cm travel range and 300 nm stepsize
 * Optional datalogging to microSD-card
 * Optimized for microscope stages with 160x110 mm opening "Universal insert" [I-3091](https://www.asiimaging.com/products/stages-inserts/160-x-110-mm-slide-inserts/), but can be adapted
+
 
 # Acknowledgement
 Lawrence Wilen, Christian Furrer and Robert Style helped with the design of this stage and controller. The menu system used is [GEM](https://github.com/Spirik/GEM) by [Spirik](https://github.com/Spirik).
