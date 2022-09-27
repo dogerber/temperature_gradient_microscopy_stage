@@ -34,3 +34,5 @@ The setup consists of a PID control loop, where an Arduini microcontroller regul
 # Acknowledgement
 Lawrence Wilen, Christian Furrer and Robert Style helped with the design of this stage and controller. The menu system used is [GEM](https://github.com/Spirik/GEM) by [Spirik](https://github.com/Spirik).
 
+Inspiration for this stage was also taken from [Prof. Sylvain Devilles group](https://www.sciencedirect.com/science/article/pii/S0304399118300536).
+
