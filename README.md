@@ -24,7 +24,6 @@ The setup consists of a PID control loop, where an Arduini microcontroller regul
 * 0.05 K temperature accuracy, when calibrated
 * 0.01 K temperature stability
 * Temperature range -25 to 60 °C (when cooled with room temperature coolant)
-* Max. cooling speed of about 50 K/min 
 * Variable spacing between metal blocks of 0-1 cm
 * Translation of sample in the temperature gradient with 1.9 cm travel range and 300 nm stepsize
 * Optional datalogging to microSD-card
