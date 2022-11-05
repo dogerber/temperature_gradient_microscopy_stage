@@ -4,17 +4,24 @@
 // to be controlled by an Arduino Mega
 // Original Code by Dominic Gerber and Lawrence Wilen
 //
+// ----- Changelog: ------
+// v1.0.2:
+//    - Changed calibration for T3 temperature sensor
+//    - added welcome message
+//    - removed Adafruit_ImageReader, was not used
+//    - fixed bug which prevented quick_move_to_0 to work
+//    - added safety shutoff if T1/T2 reading is out of range
 // More Information at https://github.com/dogerber/temperature_gradient_microscopy_stage
 // ------------------------------------------------------------------------------------
 
 
 //////////////////////////////// Libraries ///////////////////////////////////////////
 #include <Adafruit_GFX.h>           // Core graphics library
-#include <Adafruit_SSD1351.h>       // Hardware-specific library (https://www.adafruit.com/product/2088)
-#include <Adafruit_SSD1306.h>       // OLED 1.3 " display (https://www.adafruit.com/product/938)
+#include <Adafruit_SSD1351.h>       // (large) Display (https://www.adafruit.com/product/2088), 128x128 pixel
+#include <Adafruit_SSD1306.h>       // (small) OLED 1.3 " display (https://www.adafruit.com/product/938), 128x64 pixel
 #include <SdFat.h>                  // SD card & FAT filesystem library
 #include <Adafruit_SPIFlash.h>      // SPI / QSPI flash library
-#include <Adafruit_ImageReader.h>   // Image-reading functions
+//#include <Adafruit_ImageReader.h>   // Image-reading functions
 #include <GEM_adafruit_gfx.h>       // GEM (https://github.com/Spirik/GEM)
 #include <KeyDetector.h>            // GEM 
 #include <Adafruit_ADS1X15.h>       // used to measure temperature with ADS1115
@@ -104,7 +111,7 @@ const byte okPin = 30;
 
 
 //////////////////////////////// Global Variables //////////////////////////////////////
-#define CODE_VERSION "1.0.1"
+#define CODE_VERSION "1.0.2"
 
 // Settings
 #define T_MAX 45 // in Celsius, maximum allowed temperature, should be at least 5 degrees out of operation range
@@ -173,7 +180,7 @@ boolean mot_first_movement = true;
 char filename_mot[GEM_STR_LEN] = "motpoy.txt";
 unsigned long mot_t_startMovement;
 long mot_Position_startMovement;
-const float speedConversionFactor = 1 / (mot_stepsize * 60 * 1000); // mot_speed is given in mum/min, we need it in [steps/millis] 
+const float speedConversionFactor = 1 / (mot_stepsize * 60 * 1000); // mot_speed is given in mum/min, we need it in [steps/millis]
 float mot_QuickMoveStep_um = 200; // [um]
 
 // Variables for PID of peltier control (VNH5019)
@@ -216,7 +223,7 @@ char filename_log[GEM_STR_LEN] = "log01.txt";  // not to long please, max 8 char
 // SD card
 SdFat                SD;         // SD card filesystem
 SdFile myFile;
-Adafruit_ImageReader reader(SD); // Image-reader object, pass in SD filesys
+//Adafruit_ImageReader reader(SD); // Image-reader object, pass in SD filesys
 
 // Screens
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, TFT_CS, TFT_DC, TFT_RST);
@@ -229,7 +236,7 @@ Adafruit_ADS1115 ads;  // load library to run ADS1115, used for temperature meas
 DRV8834 stepper(MOTOR_STEPS, DIR, STEP, SLEEP, M0, M1);
 
 
-// GEM
+// GEM (Menu system)
 // Array of Key objects that will link GEM key identifiers with dedicated pins
 Key keys[] = {{GEM_KEY_UP, upPin}, {GEM_KEY_RIGHT, rightPin}, {GEM_KEY_DOWN, downPin}, {GEM_KEY_LEFT, leftPin}, {GEM_KEY_CANCEL, cancelPin}, {GEM_KEY_OK, okPin}};
 KeyDetector myKeyDetector(keys, sizeof(keys) / sizeof(Key)); // Create KeyDetector object
@@ -338,6 +345,23 @@ void setup(void) {
   tft.fillScreen(0x00); // clears screen
   tft.setRotation(1);
 
+  // Welcome message
+  //tft.println("Welcome");
+  //reader.drawBMP("/lily.bmp", tft, 0, 0);
+
+  oled2.clearDisplay();
+  oled2.setTextSize(1);
+  oled2.setTextColor(SSD1306_WHITE);
+  oled2.setCursor(0, 0);
+  oled2.println(" ---- Gelatiera ----");
+  oled2.setCursor(10, 15); oled2.println("by Dominic Gerber");
+  oled2.setCursor(15, 30); oled2.print(" Code: v"); oled2.println(CODE_VERSION);
+  oled2.setCursor(15, 45); oled2.println("www.github.com/");
+  oled2.setCursor(40, 53); oled2.println("dogerber");
+  oled2.display();
+  delay(1500); // minimize this, it makes the machine unresponsive
+
+
   // ---------------------- SD card Initialization ------------------------------------------- //
   if (do_Serial_communication) {
     Serial.print(F("Initializing filesystem..."));
@@ -356,7 +380,6 @@ void setup(void) {
   pinMode(upPin, INPUT);
   pinMode(cancelPin, INPUT);
   pinMode(okPin, INPUT);
-
 
   // Menu init, setup and draw
   menu.setSplashDelay(0); // disabled GEM splashscreen
@@ -416,24 +439,29 @@ void loop() {
   T_Peltier_1 = Temp0;
   T_Peltier_2 = Temp1;
   T_cooling_plate = Temp2;
-  T_sensor = Temp3; // currently not used
+  T_sensor = Temp3; // external thermistor to measure T in sample cell
 
   // check for cooling plate nan or too hot
-  if ((isnan(T_cooling_plate)) || (T_cooling_plate > MAX_COOLING_PLATE_TEMPERATURE)) {
-    enablePeltiers = false; // turn peltiers off, has to be manually turned on again
-    warningMessage("Cooling plate too hot/nan!");
+  if ((isnan(T_cooling_plate)) && (isnan(T_Peltier_1)) && (isnan(T_Peltier_2)) ) {
+  warningMessage("Signal cable disconnected.");
+  enablePeltiers = false;
+  }
+  else {
+    if ((isnan(T_cooling_plate)) || (T_cooling_plate > MAX_COOLING_PLATE_TEMPERATURE)) {
+      enablePeltiers = false; // turn peltiers off, has to be manually turned on again
+      warningMessage("Cooling plate too hot or no signal!");
+    }
 
-    //    if (ALARM_BEEP_INTERVAL_MS > millis() - t_last_alarm_beep) { // conitnuous beeping as alert
-    ////      beep(1000); delay(100); beep(1000); delay(100); beep(1000); delay(100);
-    //
-    //      t_last_alarm_beep = millis();
-    //    }
+    if ( (isnan(T_Peltier_1)) || (isnan(T_Peltier_2))  ) {
+      enablePeltiers = false; // turn peltiers off, has to be manually turned on again
+      warningMessage("T1/T2 too hot or no signal!");
+    }
   }
 
 
   // ---- Update Set Temperature
   if (commitChangesT) {
-    if (TempChangeRate == 0) { // change temperature as fast as possible
+  if (TempChangeRate == 0) { // change temperature as fast as possible
       SetTemp1 = PlanTemp1;
       SetTemp2 = PlanTemp2;
     }
@@ -461,7 +489,7 @@ void loop() {
 
   // For Debug/PID tuning: plot temperature and set temperature
   if (do_plot_temperatures) { // connect through USB and use Serial plotter in Arduino IDE
-    Serial.print("S1:"); Serial.print(SetTemp1);
+  Serial.print("S1:"); Serial.print(SetTemp1);
     Serial.print(", T1:"); Serial.print(T_Peltier_1);
     Serial.print(", S2:"); Serial.print(SetTemp2);
     Serial.print(", T2:"); Serial.println(T_Peltier_2);
@@ -472,7 +500,7 @@ void loop() {
 
   // ----- Determine Motor movement
   if (mot_holding || commitMovement) {
-    stepper.enable();
+  stepper.enable();
     mot_holding = true;
   }
   else {
@@ -489,9 +517,9 @@ void loop() {
 
   // --- Write to log file
   if (enableDataLogging) {
-    // Serial.println(F("Data logging enabled."));
-    // open the file for write at end like the Native SD library
-    if (!SD.exists(filename_log)) {
+  // Serial.println(F("Data logging enabled."));
+  // open the file for write at end like the Native SD library
+  if (!SD.exists(filename_log)) {
       // if it doesnt exist, try to make it
       if (!myFile.open(filename_log, O_RDWR | O_CREAT | O_AT_END)) {
         SD.errorHalt("opening filename_log for write failed");
@@ -530,12 +558,12 @@ void loop() {
 
 
   // Debugging
-  if (do_Serial_communication){
-    Serial.print("mot_t_startMovement: "); Serial.println(mot_t_startMovement);
+  if (do_Serial_communication) {
+  Serial.print("mot_t_startMovement: "); Serial.println(mot_t_startMovement);
   }
 
   time_for_one_loop_ms =  millis() - runtime * 1000;
-  runtime = millis() / 1000;
+                          runtime = millis() / 1000;
 
 } // end main loop
 
@@ -578,7 +606,7 @@ void setupMenu() {
   menuPageInfo.addMenuItem(menuRuntime);
   menuPageInfo.addMenuItem(menuItemOffset1);
   menuPageInfo.addMenuItem(menuItemOffset2);
-  
+
 
   // Subpage QUICK
   menuPageQuick.addMenuItem(menuItemMainLink3);
@@ -588,10 +616,10 @@ void setupMenu() {
   menuPageQuick.addMenuItem(menuItemQuickMaxMotSpeed);
   menuPageQuick.addMenuItem(menuItemQuickMoveTo0);
   menuPageQuick.addMenuItem(menuItemQuickMoveStep);
-    menuItemQuickMoveStep.setPrecision(2);
+  menuItemQuickMoveStep.setPrecision(2);
   menuPageQuick.addMenuItem(menuItemQuickMovePos);
   menuPageQuick.addMenuItem(menuItemQuickMoveNeg);
-  
+
   // Add menu items to MAIN menu page
   menuPageMain.addMenuItem(menuItemEnablePeltiers);
   menuPageMain.addMenuItem(menuItemSetTemp1);
@@ -639,7 +667,7 @@ void writeToOLED2(float S1, float S2, float T1, float T2) {
 
     // Set and actual Temperatures
     oled2.setCursor(12, 8);
-    oled2.print("Set");
+    oled2.print("Set: ");
     //if (SetTemp1 <0){ // this prevents jumping of digits when changing from positive to negative
     //  oled2.setCursor(30, 8);
     //}
@@ -667,37 +695,18 @@ void writeToOLED2(float S1, float S2, float T1, float T2) {
 
     // Act temperature
     oled2.setCursor(12, 16);
-    oled2.print("Act");
+    oled2.print("Act: ");
     oled2.setCursor(36, 16);
     oled2.print(T1);
 
     oled2.setCursor(78, 16);
     oled2.print(T2);
 
-    // cooling circuit temperature
-    oled2.setCursor(12, 24);
-    oled2.print("Cooling T: ");
-    oled2.setCursor(90, 24);
-    oled2.print(T_cooling_plate);
-
-    // Display Motor position
-    oled2.setCursor(12, 32);
-    oled2.print("Pos: "); oled2.print(mot_position * mot_stepsize);
-    oled2.print(" um");
-    // left/right arrow for movement
-    if (mot_PlanPosition - mot_position < 0) {
-      oled2.print("<- "); //oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
-    }
-    else if (mot_PlanPosition - mot_position > 0) {
-      oled2.print("-> "); // oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
-    }
-
-
-    // Peltier power
+        // Peltier power
     if (true) {
       peltier1_percentage =  constrain(peltier1, -255, 255) * 100 / 255;
       peltier2_percentage =  constrain(peltier2, -255, 255) * 100 / 255;
-      oled2.setCursor(12, 40);
+      oled2.setCursor(12, 24);
 
       if (peltier1_percentage < 0) {
         oled2.print("Pow:");
@@ -708,13 +717,35 @@ void writeToOLED2(float S1, float S2, float T1, float T2) {
 
       oled2.print(peltier1_percentage, 0);
       if (peltier2_percentage < 0) {
-        oled2.setCursor(72, 40);
+        oled2.setCursor(72, 24);
       }
       else {
-        oled2.setCursor(78, 40);
+        oled2.setCursor(78, 24);
       }
       oled2.print(peltier2_percentage, 0);
     }
+
+    // cooling circuit temperature
+    oled2.setCursor(12, 32);
+    oled2.print("Cooling T: ");
+    oled2.setCursor(90, 32);
+    oled2.print(T_cooling_plate);
+
+    // Display Motor position
+    oled2.setCursor(12, 40);
+    oled2.print("Pos: "); oled2.print(mot_position * mot_stepsize);
+    oled2.print(" um");
+    // left/right arrow for movement
+    if (commitMovement){
+    if (mot_PlanPosition - mot_position < 0) {
+      oled2.print("<- "); //oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
+    }
+    else if (mot_PlanPosition - mot_position > 0) {
+      oled2.print("-> "); // oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
+    }
+    }
+
+
 
     // Warnings
     if (((millis() - t_last_warning_message < WARNING_MESSAGE_DISPLAY_TIME)) && (t_last_warning_message > 0)) {
@@ -746,9 +777,11 @@ void warningMessage(char *str_in) {
     // prevents continuous beeping with the same message
     warning_string = str_in;
     // beep
-    beep(800); delay(100);
-    beep(800); delay(100);
-    beep(800); delay(100);
+    if (millis() - t_last_warning_message > 10 * 1000) { // prevent continuous beeping (which blocks user input)
+      beep(800); delay(100);
+      beep(800); delay(100);
+      beep(800); delay(100);
+    }
   }
   t_last_warning_message = millis();
 }
@@ -768,7 +801,6 @@ void checkPlanTemps() {
   // make sure the PlanTemp are within the allowed range
   PlanTemp1 = constrain(PlanTemp1, T_RANGE_MIN, T_RANGE_MAX);
   PlanTemp2 = constrain(PlanTemp2, T_RANGE_MIN, T_RANGE_MAX);
-  // could add beep here to signify start of T-change?
 }
 
 void doCommitChangesT() {
@@ -797,7 +829,7 @@ void SDMotPositionLoad() {
 
     char buffer_read[64];
     uint8_t idx_read = 0;
-    
+
     while (myFile.available()) {
       buffer_read[idx_read] = myFile.read();
       idx_read ++;
@@ -878,7 +910,7 @@ float calcTemperature(float res_thermistor ) {
 
   float temperature = (1 / (SALPHA + SBETA * log(ratio) + SGAMMA * pow(log(ratio), 2) + SDELTA * pow(log(ratio), 3))) - 273.15;
 
-  if (temperature < -69) { // a reading of -99 or lower means thermistor not connected
+  if (temperature < T_RANGE_MIN - 5 || temperature > T_RANGE_MAX + 5) { // a reading of -99 or lower means thermistor not connected or faulty
     temperature = sqrt(-1); // makes it NaN
   }
 
@@ -886,14 +918,18 @@ float calcTemperature(float res_thermistor ) {
 }
 
 float calcTemperature_thin(float res_thermistor ) {
+  // A very thin additional temperatur sensor to put into the sample cell
+  // need to be calibrated with each thermistor
+  // enable Settings/Show T3 to view measurement, it is also logged to SD card if this is enabled.
   // https://eu.mouser.com/ProductDetail/Amphenol-Advanced-Sensors/AN6N4-GC11KA143L-37C?qs=yp8j7TdJNfKDOUJg7L29DQ%3D%3D
   // calculated coefficients with this: https://rusefi.com/Steinhart-Hart.html
-  //#define SALPHA 0.0007189324884286944
-  //#define SBETA 0.000250955278117255
-  //#define SDELTA 1.258485006192324e-7
+  //#define SALPHA 0.00044293945670275834
+  //#define SBETA 0.00029241637118974456
+  //#define SDELTA 3.605165395401032e-9
+  // measured accuracy with Gelatiera III about 0.1 in range 0-20°C
+
   res_thermistor = res_thermistor * 1000; // formula needs Ohm, not kOhm
-  //float temperature = 1 / (0.0006297634226689573 + 0.00026311843245081096 * log(res_thermistor) + 9.773976481292966e-8 * pow(log(res_thermistor), 3)) - 273.15;
-  float temperature = 1 / (0.0007721425061974199 + 0.0002444807033247905 * log(res_thermistor) + 1.5134377709759929e-7 * pow(log(res_thermistor), 3)) - 273.15; // second thin thermistor
+  float temperature = 1 / (0.00044293945670275834 + 0.00029241637118974456 * log(res_thermistor) + 3.605165395401032e-9 * pow(log(res_thermistor), 3)) - 273.15; // second thin thermistor
   if (temperature < -69) { // a reading of -99 or lower means thermistor not connected
     temperature = sqrt(-1); // makes it NaN
   }
@@ -905,10 +941,11 @@ void resetMotPosition() {
   mot_position = 0;
   mot_PlanPosition = 0;
   mot_PlanPosition_um = 0;
+  mot_first_movement = false; // user did check the position
 }
 
 void doCommitMovement() {
-// when "Move: " is set 
+  // when "Move: " is set
   if (mot_first_movement) { // remind user to reset the motor!
     warningMessage("Dont forget to recalibrate the motor!");
     mot_first_movement = false;
@@ -919,7 +956,7 @@ void doCommitMovement() {
     mot_Position_startMovement = mot_position;
     stepper.enable();
   }
-  
+
 }
 
 void moveMotor() {
@@ -930,12 +967,12 @@ void moveMotor() {
       mot_SetPosition = mot_PlanPosition;
     }
     else {
-      mot_SetPosition = mot_Position_startMovement + mot_speed * speedConversionFactor * (millis() - mot_t_startMovement)* signOfX(mot_PlanPosition - mot_position); // speed * conversion * dt * direction = place to be now
+      mot_SetPosition = mot_Position_startMovement + mot_speed * speedConversionFactor * (millis() - mot_t_startMovement) * signOfX(mot_PlanPosition - mot_position); // speed * conversion * dt * direction = place to be now
     }
 
- // move motor if necessary and allowed
+    // move motor if necessary and allowed
     if (abs(mot_SetPosition - mot_position) >= 1) { // 0 means no changes, can skip all these checks then
-      
+
       // check if setPos is still allowed
       if (abs(mot_SetPosition) > mot_maxPos) {
         mot_SetPosition = mot_position;
@@ -1022,14 +1059,14 @@ void peltierControl() {
     else {
       // tempearture in range, do the normal adjustment
       if (abs(errorval1) < antiwindval) {
-        offset1 = offset1 + (Igain * errorval1); 
-        offset_dif1 = (errorval1 - previous_errorval1) * Dgain; 
+        offset1 = offset1 + (Igain * errorval1);
+        offset_dif1 = (errorval1 - previous_errorval1) * Dgain;
       }
       else {
         offset1 = 0;
         offset_dif1 = 0;
       }
-      peltier1 = Pgain * errorval1 + offset1 + offset_dif1;  
+      peltier1 = Pgain * errorval1 + offset1 + offset_dif1;
     }
 
     // Peltier 2
@@ -1159,20 +1196,23 @@ void doQuickMotSpeed() {
 }
 
 void doQuickMoveMiddle() {
-  mot_PlanPosition = 0;
+  mot_PlanPosition_um = 0;
   doCheckPlanPosition();
+  commitMovement = true;
   doCommitMovement();
 }
 
 void doQuickMovePos() {
   mot_PlanPosition_um = mot_PlanPosition_um + mot_QuickMoveStep_um;
   doCheckPlanPosition();
+  commitMovement = true;
   doCommitMovement();
 }
 
 void doQuickMoveNeg() {
-   mot_PlanPosition_um = mot_PlanPosition_um - mot_QuickMoveStep_um;
+  mot_PlanPosition_um = mot_PlanPosition_um - mot_QuickMoveStep_um;
   doCheckPlanPosition();
+  commitMovement = true;
   doCommitMovement();
 }
 
