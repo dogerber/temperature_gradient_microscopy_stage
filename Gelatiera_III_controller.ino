@@ -5,6 +5,8 @@
 // Original Code by Dominic Gerber and Lawrence Wilen
 //
 // ----- Changelog: ------
+// v1.0.5
+//    - added screensaver to prevent pixel burn
 // v1.0.4
 //    - added logging of peltier power, if enabled
 // v1.0.3:
@@ -17,7 +19,7 @@
 //    - added safety shutoff if T1/T2 reading is out of range
 // More Information at https://github.com/dogerber/temperature_gradient_microscopy_stage
 // ------------------------------------------------------------------------------------
-#define CODE_VERSION "1.0.4"
+#define CODE_VERSION "1.0.5"
 
 //////////////////////////////// Libraries ///////////////////////////////////////////
 #include <Adafruit_GFX.h>           // Core graphics library
@@ -173,7 +175,7 @@ long mot_PlanPosition; // ultimate position to be reached [steps]
 float mot_PlanPosition_um; // ultimate position to be reached [um], in GEM
 long mot_maxPos = 25000; // [steps] max distance in steps from the middle (=0) in both directions
 // linear actuator travels 1 mm per rotation, has 200 normal steps, here with 32 microsteps, so 1mm = 32*200 microsteps
-float mot_speed = 1000.00; // [micrometers/minutes]
+float mot_speed = 100.00; // [micrometers/minutes]
 long mot_stepsToDo; // [steps] for current movement step
 float mot_stepsize = 0.315305;// in [mum/step]
 boolean commitMovement = false; // starts movement of actuator
@@ -212,6 +214,9 @@ unsigned long peltier_t_last_tp;
 #define SCREEN_HEIGHT 128
 #define SCREEN2_WIDTH  128
 #define SCREEN2_HEIGHT 64
+unsigned long t_lastButtonPress = 0;
+unsigned long t_untillScreenOff = 300000; // [ms] large screen tft is turned off after this time to save pixels from burning out
+boolean screenSaver_boolean = false; // [boolean] keeps track of if the screensaver is currently on or not
 
 // Menu and data logging
 boolean do_plot_temperatures = false; // enables Serial print of T values to be plotted in Arduino IDE
@@ -230,8 +235,8 @@ SdFile myFile;
 //Adafruit_ImageReader reader(SD); // Image-reader object, pass in SD filesys
 
 // Screens
-Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, TFT_CS, TFT_DC, TFT_RST);
-Adafruit_SSD1306 oled2 = Adafruit_SSD1306(SCREEN2_WIDTH, SCREEN2_HEIGHT, &SPI, OLED_DC, OLED2_RST, OLED_CS);
+Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, TFT_CS, TFT_DC, TFT_RST); // large screen
+Adafruit_SSD1306 oled2 = Adafruit_SSD1306(SCREEN2_WIDTH, SCREEN2_HEIGHT, &SPI, OLED_DC, OLED2_RST, OLED_CS); // small screen
 
 // Temperature measurement
 Adafruit_ADS1115 ads;  // load library to run ADS1115, used for temperature measurement
@@ -373,7 +378,7 @@ void setup(void) {
 
   if (!SD.begin(SD_CS, SD_SCK_MHZ(10))) { // Breakouts require 10 MHz limit due to longer wires
     Serial.println(F("SD begin() failed. Try to disconnect power and restarting."));
-   // for (;;); // Fatal error, do not continue
+    // for (;;); // Fatal error, do not continue
   }
 
   // ---------------------- GEM Menu system Initialization -------------------------------------- //
@@ -428,7 +433,25 @@ void loop() {
   // ------ GEM Menu ready
   if (menu.readyForKey()) {
     myKeyDetector.detect();     // ...detect key press using KeyDetector library
+    
+    if (myKeyDetector.trigger != 0) { // if a button is pressed
+      t_lastButtonPress = millis(); // update last button press time
+
+      if (screenSaver_boolean) {
+        tft.enableDisplay(true);
+        screenSaver_boolean = false; 
+      }
+    }
+
     menu.registerKeyPress(myKeyDetector.trigger); // Pass pressed button to menu
+  }
+
+  // if no button pressed for a long time, turn screen off to save pixels from burning out
+  if (!screenSaver_boolean) {
+    if (millis() - t_lastButtonPress > t_untillScreenOff) {
+      tft.enableDisplay(false);
+      screenSaver_boolean = true;
+    }
   }
 
 
@@ -447,8 +470,8 @@ void loop() {
 
   // check for cooling plate nan or too hot
   if ((isnan(T_cooling_plate)) && (isnan(T_Peltier_1)) && (isnan(T_Peltier_2)) ) {
-  warningMessage("Signal cable disconnected.");
-  enablePeltiers = false;
+    warningMessage("Signal cable disconnected.");
+    enablePeltiers = false;
   }
   else {
     if ((isnan(T_cooling_plate)) || (T_cooling_plate > MAX_COOLING_PLATE_TEMPERATURE)) {
@@ -465,7 +488,7 @@ void loop() {
 
   // ---- Update Set Temperature
   if (commitChangesT) {
-  if (TempChangeRate == 0) { // change temperature as fast as possible
+    if (TempChangeRate == 0) { // change temperature as fast as possible
       SetTemp1 = PlanTemp1;
       SetTemp2 = PlanTemp2;
     }
@@ -493,7 +516,7 @@ void loop() {
 
   // For Debug/PID tuning: plot temperature and set temperature
   if (do_plot_temperatures) { // connect through USB and use Serial plotter in Arduino IDE
-  Serial.print("S1:"); Serial.print(SetTemp1);
+    Serial.print("S1:"); Serial.print(SetTemp1);
     Serial.print(", T1:"); Serial.print(T_Peltier_1);
     Serial.print(", S2:"); Serial.print(SetTemp2);
     Serial.print(", T2:"); Serial.println(T_Peltier_2);
@@ -504,7 +527,7 @@ void loop() {
 
   // ----- Determine Motor movement
   if (mot_holding || commitMovement) {
-  stepper.enable();
+    stepper.enable();
     mot_holding = true;
   }
   else {
@@ -521,9 +544,9 @@ void loop() {
 
   // --- Write to log file
   if (enableDataLogging) {
-  // Serial.println(F("Data logging enabled."));
-  // open the file for write at end like the Native SD library
-  if (!SD.exists(filename_log)) {
+    // Serial.println(F("Data logging enabled."));
+    // open the file for write at end like the Native SD library
+    if (!SD.exists(filename_log)) {
       // if it doesnt exist, try to make it
       if (!myFile.open(filename_log, O_RDWR | O_CREAT | O_AT_END)) {
         SD.errorHalt("opening filename_log for write failed");
@@ -567,11 +590,11 @@ void loop() {
 
   // Debugging
   if (do_Serial_communication) {
-  Serial.print("mot_t_startMovement: "); Serial.println(mot_t_startMovement);
+    Serial.print("mot_t_startMovement: "); Serial.println(mot_t_startMovement);
   }
 
   time_for_one_loop_ms =  millis() - runtime * 1000;
-                          runtime = millis() / 1000;
+  runtime = millis() / 1000;
 
 } // end main loop
 
@@ -710,7 +733,7 @@ void writeToOLED2(float S1, float S2, float T1, float T2) {
     oled2.setCursor(78, 16);
     oled2.print(T2);
 
-        // Peltier power
+    // Peltier power
     if (true) {
       peltier1_percentage =  constrain(peltier1, -255, 255) * 100 / 255;
       peltier2_percentage =  constrain(peltier2, -255, 255) * 100 / 255;
@@ -744,13 +767,13 @@ void writeToOLED2(float S1, float S2, float T1, float T2) {
     oled2.print("Pos: "); oled2.print(mot_position * mot_stepsize);
     oled2.print(" um");
     // left/right arrow for movement
-    if (commitMovement){
-    if (mot_PlanPosition - mot_position < 0) {
-      oled2.print("<- "); //oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
-    }
-    else if (mot_PlanPosition - mot_position > 0) {
-      oled2.print("-> "); // oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
-    }
+    if (commitMovement) {
+      if (mot_PlanPosition - mot_position < 0) {
+        oled2.print("<- "); //oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
+      }
+      else if (mot_PlanPosition - mot_position > 0) {
+        oled2.print("-> "); // oled2.print((mot_PlanPosition - mot_position)*mot_stepsize, 0);
+      }
     }
 
 
@@ -789,9 +812,12 @@ void warningMessage(char *str_in) {
       beep(800); delay(100);
       beep(800); delay(100);
       beep(800); delay(100);
+
+      menu.drawMenu(); // redraw menu to show actual state
     }
   }
   t_last_warning_message = millis();
+
 }
 
 void showLastWarning() {
@@ -936,9 +962,10 @@ float calcTemperature_thin(float res_thermistor ) {
   //#define SDELTA 3.605165395401032e-9
   // measured accuracy with Gelatiera III about 0.1 in range 0-20°C
   // cal. 221109 1 / (0.002656977030101768 + 0.00020606522585347466 * logR + 0.0000022285683175093542 * logR * logR * logR)
+  // cal. 230127 1 / (0.0025570722591526343 + 0.0002621295722603079 * logR + 8.395917565157314e-7 * logR * logR * logR)
 
   //res_thermistor = res_thermistor * 1000; // formula needs Ohm, not kOhm
-  float temperature = 1 / (0.002656977030101768 + 0.00020606522585347466 * log(res_thermistor) + 0.0000022285683175093542 * pow(log(res_thermistor), 3)) - 273.15; // second thin thermistor
+  float temperature = 1 / (0.0025570722591526343 + 0.0002621295722603079 * log(res_thermistor) + 8.395917565157314e-7 * pow(log(res_thermistor), 3)) - 273.15; // second thin thermistor
   if (temperature < -69) { // a reading of -99 or lower means thermistor not connected
     temperature = sqrt(-1); // makes it NaN
   }
