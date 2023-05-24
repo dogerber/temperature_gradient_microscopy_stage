@@ -19,12 +19,15 @@ The setup consists of a PID control loop, where an Arduino microcontroller regul
 
 
 **Stage head**
+
  <img src="images/Exploded_view_animation.gif" height =300px >
  
  **Controller box**
+ 
 <img src="images/picture_controller.png" height =300px > 
 
 **Schematic**
+
 <img src="images/G3_principle.png" height =300px >
 
 # Features
