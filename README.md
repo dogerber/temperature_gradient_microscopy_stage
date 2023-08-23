@@ -11,6 +11,9 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
   > [User manual (softliv group)](https://github.com/gerberli/temperature_gradient_microscopy_stage/wiki/Operation-manual)
 
 
+This has been used for the following publications: 
+-[Stress accumulation by confined ice in a temperature gradient](https://www.pnas.org/doi/10.1073/pnas.2200748119)
+-[Polycrystalinity enhances stress build-up around ice](https://arxiv.org/abs/2303.13428)
 
 
 
