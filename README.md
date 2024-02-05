@@ -14,6 +14,7 @@ Detailed instructions to build the setup can be found in the [wiki](https://gith
 This has been used for the following publications: 
 * [Stress accumulation by confined ice in a temperature gradient (PNAS)](https://www.pnas.org/doi/10.1073/pnas.2200748119)
 * [Polycrystalinity enhances stress build-up around ice (PRL)](https://pubmed.ncbi.nlm.nih.gov/38039453/)
+* [Dehydration drives damage in the freezing of brittle hydrogels](https://arxiv.org/abs/2401.12871)
 
 
 
